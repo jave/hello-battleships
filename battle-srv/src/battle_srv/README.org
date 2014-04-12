@@ -1,0 +1,98 @@
+* discussion
+;; game example
+;; in this case eacsh player has separate boards for  different aspects, ships, shots, etc
+{
+ :p1 {:name "joakim"
+      :board [[0 0 0 (:ship 2 d)]
+              [0 0 0 0]
+              [0 0 0 0]
+              [0 0 0 0]]}
+ :p2 {:name "mattias"
+      :board [[0 0 1 0]
+              [0 0 0 0]
+              [0 0 0 0]
+              [0 0 0 0]]}
+ }
+
+;; another game example
+;; in this case the grid is shared for both(or more) players
+'
+{
+  {:name "joakim" :id :p1}
+  {:name "mattias" :id :p2}
+ 
+ :board [[0 0 :p2 :p1]
+         [0 0 0 0]
+         [0 0 {:p1 {:ship :l 2 :d d} :p2} 0]
+         [0 0 0 0]]
+
+
+ }
+
+
+
+
+;; a layer approach
+{
+  {:name "joakim" :id :p1}
+  {:name "mattias" :id :p2}
+
+  ;;ships
+  :entities {
+             :p1 [[0 0 (:s 2 d) 0]
+                  [0 0 0 0]
+                  [0 0 0 0]
+                  [0 0 0 0]]
+             :p2 [[0 0 (:s 2 d) 0]
+                  [0 0 0 0]
+                  [0 0 0 0]
+                 [0 0 0 0]]}
+
+  ;; shots that were fired
+    :shots {
+             :p1 [[0 0 1 0]
+                  [0 0 0 0]
+                  [0 0 0 0]
+                  [0 0 0 0]]
+             :p2 [[0 0 1 0]
+                  [0 0 0 0]
+                  [0 0 0 0]
+                 [0 0 0 0]]}
+
+
+ }
+
+
+;;again a shared grid example
+;;here im thinking that it feels like its nicer with a shared world
+;; and views of the world, that might have fog of war and stuff
+{
+ :players {{:name "joakim" :id :p1}
+           {:name "mattias" :id :p2}}
+
+  ;; 0 should be nil
+  :board [[0 0 {:type :shot :owner :p2 }  {:type :ship :owner :p1 :l 2 :dir 'd}   0 0 0 0]
+          [0 0 0 0   0 0 0 0]
+          [0 0 0 0   0 0 0 0]
+          [0 0 0 0   0 0 0 0]
+
+         ]
+
+
+ }
+
+;;so, is this useful for other games? heres Go
+;, seems ok. :type and :owner are generic enough to be usable across games
+{
+ :players {{:name "joakim" :id :p1}
+           {:name "mattias" :id :p2}}
+
+  ;; 0 should be nil
+ :board [[{:type 'stone :owner :p1} 0 0] 0 
+         [0 0 0 0 ]
+         [0 0 0 0 ]
+         [0 0 0 {:type 'stone :owner :p2} ]
+         ]
+
+
+ }
