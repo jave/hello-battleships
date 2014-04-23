@@ -1,4 +1,6 @@
-* discussion
+* license
+http://www.gnu.org/licenses/agpl-3.0.html
+* discussion about game structures
 ;; game example
 ;; in this case eacsh player has separate boards for  different aspects, ships, shots, etc
 {
