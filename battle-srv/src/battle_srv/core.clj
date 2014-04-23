@@ -33,15 +33,35 @@
                          (board-map  (empty-board size) (fn [cell]   (update-in cell [:view] (fn [x] (into #{} (conj x p2-sym)))) ) )))
 
         p1board
-        (loop [board  startboard cnt 10] (if (zero? cnt) board   (recur  (add-entity-at board {:type 'ship :owner p1-sym} (rand-int size) (rand-int size)) (dec cnt))))
+        (randomize-entities startboard  #(rand-int size) #(rand-int size) p1-sym 'ship size)
 
         p2board
-        (loop [board  p1board cnt 10] (if (zero? cnt) board   (recur  (add-entity-at board {:type 'ship :owner p2-sym}  (+ size(rand-int size))  (rand-int size)) (dec cnt))))
+        (randomize-entities p1board #(+ size  (rand-int size)) #(rand-int size)  p2-sym 'ship size)
 
         ]
     p2board
 
     ))
+
+(defn randomize-entities [startboard xrand yrand owner type startcount]
+  (loop [board  startboard
+         cnt startcount]
+    (if (zero? cnt) board
+        (let [x (apply xrand [])
+              y (apply yrand [])]
+          (if (cell-contains-any (board-at board x y) type)
+            (recur board cnt);;already a ship, randomize again
+            (recur  (add-entity-at board {:type type :owner owner}
+                                   x y
+                                   )
+                    (dec cnt)))))))
+
+(defn cell-contains-any [cell type ]
+  (reduce (fn [x y] (or x y))
+          false
+          (map #(= type (:type %))
+               (:entities cell))
+          ))
 
 (defn new-game [p1 p2]
   {:board (empty-player-board 10 p1 p2)
@@ -56,7 +76,8 @@
    'th {:name "tomas"}})
 
 (def all-games
-  [(ref  (new-game 'mv 'jv))])
+  [(ref  (new-game 'mv 'jv)
+         )])
 
 (defn next-player [game]
   (let [players (vec (:players game))
@@ -78,7 +99,9 @@
 
 (defn move-shoot-at [board player x y]
   (let [cell  (board-at board x y)
-        new-board (add-entity-at board {:type 'shot :owner player} x y)]
+        new-board (-> board
+                      (add-viewer-at player x y)
+                      (add-entity-at  {:type 'shot :owner player} x y))]
     
     (if (some #(= 'ship (:type %)) (:entities cell))
       {:result 'yay! :new-board new-board}
@@ -103,6 +126,8 @@
     (dosync (ref-set game-ref game-after-move))
     result))
 
+;;(make-move 0 'move-shoot-at 'jv 0 7)
+
 ;;(update-in demo-board [0 0 :view] (fn [x] (conj x 'p2)))
 
 (defn add-viewer-at [board player x y]
@@ -125,7 +150,8 @@
           ['ship 'shot] '! ;;burning ship!
           ['shot] '* ;;shot missed!
           ['ship] '= ;;ship
-          :else '_) ;; something else
+          [] 'w ;;empty water
+          :else cell) ;; something else, debug
    :else '? ;;you cant see here
    ))
 
@@ -154,6 +180,7 @@
         ]
     (println "players : " (:players game))
     (println "turn    : " (:turn game))
+    (println "next player : " (next-player game))
     (println "board as seen by " p1)
     (println "**************************************" )
     (dorun  (map #(println "     " %) bv1))
