@@ -63,6 +63,7 @@
                (:entities cell))
           ))
 
+
 (defn new-game [p1 p2]
   {:board (empty-player-board 10 p1 p2)
    :players #{p1 p2}
@@ -73,7 +74,10 @@
 (def all-players
   {'mv {:name "mattias"}
    'jv  {:name "joakim"}
-   'th {:name "tomas"}})
+   'th {:name "tomas"}
+   'admin {:name "administrator"}
+   }
+  )
 
 (def all-games
   [(ref  (new-game 'mv 'jv)
@@ -97,22 +101,43 @@
 
 ;;(:type (first (board-at demo-board 0 0)))
 
-(defn move-shoot-at [board player x y]
-  (let [cell  (board-at board x y)
-        new-board (-> board
-                      (add-viewer-at player x y)
-                      (add-entity-at  {:type 'shot :owner player} x y))]
-    
-    (if (some #(= 'ship (:type %)) (:entities cell))
-      {:result 'yay! :new-board new-board}
-      {:result 'nope :new-board new-board})))
+(defn move-shoot-at [game player x y]
+  (let [board (:board game)]
+    (cond
+     (or (> x (count board)) (> y (count (first  board))) )
+     {:result '(false "dont shoot outside the board") :new-board board}
+
+     (= player (next-player game))
+     {:result '(false "its not your turn") :new-board board}
+
+     
+     true
+     (let [board (:board game)
+           cell  (board-at board x y)
+           new-board (-> board
+                         (add-viewer-at player x y)
+                         (add-entity-at  {:type 'shot :owner player} x y))]
+       
+       (cond
+        (cell-contains-any cell 'shot)
+        {:result '(false "You already made a shot there") :new-board board}
+
+        (contains? (:view cell) player)
+        {:result '(false "Theres no point shooting where you can see already") :new-board board}
+
+        
+        (cell-contains-any cell 'ship)
+        {:result '(true "Hit an enemy ship!") :new-board new-board}
+
+        true
+        {:result '(true "Missed!") :new-board new-board})))))
 
 
 (defn make-move [game-id move-fn player x y]
   (let [game-ref (get  all-games game-id)
         game @game-ref
 
-        {:keys [result new-board]} (apply (resolve move-fn) [(:board game) player x y ])
+        {:keys [result new-board]} (apply (resolve move-fn) [game player x y ])
 
         game-after-move
         (-> game
@@ -122,8 +147,8 @@
         )
         ]
 
-
-    (dosync (ref-set game-ref game-after-move))
+    (if (first result) ;;only update the board if the move was legal
+      (dosync (ref-set game-ref game-after-move)))
     result))
 
 ;;(make-move 0 'move-shoot-at 'jv 0 7)
@@ -169,7 +194,7 @@
                 board))
   ) 
 
-(defn admin-game-view [game-id]
+(defn game-view [game-id player]
   (let [game-ref (get  all-games game-id)
         game @game-ref
         p1 (get  (vec  (:players game)) 0)
@@ -181,12 +206,16 @@
     (println "players : " (:players game))
     (println "turn    : " (:turn game))
     (println "next player : " (next-player game))
-    (println "board as seen by " p1)
-    (println "**************************************" )
-    (dorun  (map #(println "     " %) bv1))
-    (println "**************************************" )
-    (println "board as seen by " p2)
-    (dorun  (map #(println "     " %) bv2))
+    (if (or (= 'admin player) (= p1 player))
+      (do
+        (println "board as seen by " p1)
+        (println "**************************************" )
+        (dorun  (map #(println "     " %) bv1))))
+    (if (or (= 'admin player) (= p2 player))
+      (do
+        (println "**************************************" )
+        (println "board as seen by " p2)
+        (dorun  (map #(println "     " %) bv2))))
     (println "END" )
 )
   )
