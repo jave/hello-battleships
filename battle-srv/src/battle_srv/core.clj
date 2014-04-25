@@ -1,5 +1,25 @@
-(ns battle-srv.core)
-(use '[clojure.core.match :only (match)])
+(ns battle-srv.core
+
+  (:use 
+   (compojure [core :only [defroutes context GET POST]]
+              [route :only [files]]
+              [handler :only [site]])
+   [clojure.core.match :only (match)]
+                                        ;[clojure.tools.logging :only [info]]
+   [clojure.tools.cli :only [cli]]
+   ring.middleware.json
+   org.httpkit.server
+   org.httpkit.timer
+   [clojure.tools.cli :only [cli]]
+   ring.util.response
+   hiccup.core
+   hiccup.page)
+  (:require 
+   [ring.middleware.reload :as reload]
+                                        ;[clj-http.client :as client]
+   [clojure.edn])
+  )
+
 
 (defn hello
   "hello battleships."
@@ -64,8 +84,8 @@
           ))
 
 
-(defn new-game [p1 p2]
-  {:board (empty-player-board 10 p1 p2)
+(defn new-game [p1 p2 size]
+  {:board (empty-player-board size p1 p2)
    :players #{p1 p2}
    :turn 0
    :last-player nil}
@@ -80,14 +100,28 @@
   )
 
 (def all-games
-  [(ref  (new-game 'mv 'jv)
-         )])
+  (agent 
+   [(agent  (new-game 'mv 'jv 10)
+            )]))
+
+;;using a vector index to identify games is pretty dumb, so maybe use uuids
+(defn uuid [] (str (java.util.UUID/randomUUID)))
+
+(defn get-game [game-id]
+  (deref (get  @all-games game-id))
+  )
+
+(defn update-game [game-id new-game]
+  (send (get all-games game-id) (fn [x] new-game))
+  )
 
 (defn next-player [game]
   (let [players (vec (:players game))
         num-players (count players)]
     (get players (mod (inc (:turn game)) num-players)))
   )
+
+
 ;;(next-player (deref(all-games 0)) )
 
 ;;(board-view (empty-player-board 10 'p1 'p2) 'p1)
@@ -134,8 +168,8 @@
 
 
 (defn make-move [game-id move-fn player x y]
-  (let [game-ref (get  all-games game-id)
-        game @game-ref
+  (let [
+        game (get-game game-id)
 
         {:keys [result new-board]} (apply (resolve move-fn) [game player x y ])
 
@@ -144,11 +178,11 @@
             (update-in  [:turn] inc)
             (assoc-in  [:board] new-board)
             (assoc-in  [:last-player] player)
-        )
+            )
         ]
 
     (if (first result) ;;only update the board if the move was legal
-      (dosync (ref-set game-ref game-after-move)))
+      (update-game game-id game-after-move))
     result))
 
 ;;(make-move 0 'move-shoot-at 'jv 0 7)
@@ -160,11 +194,6 @@
 
 (defn add-entity-at [board entity x y]
   (update-in board [x y :entities] (fn [x] (conj x entity))))
-
-(defn player-view-at [board player x y]
-  (let [cell (board-at board x y)]
-    (if ((some #{player} ) (:view cell))))
-  )
 
 
 (defn player-view-cell [cell player]
@@ -194,28 +223,68 @@
                 board))
   ) 
 
+
+(defn board-view-table [player boardview]
+  [:div
+   [:ul "board as seen by " player]
+   [:ul "**************************************" ]
+   [:table 
+    (map (fn [x] [:tr  (map (fn [y] [:td y]) x) ]) boardview)]])
+   
+
 (defn game-view [game-id player]
-  (let [game-ref (get  all-games game-id)
-        game @game-ref
-        p1 (get  (vec  (:players game)) 0)
-        p2 (get  (vec  (:players game)) 1)
-        board (:board game)
-        bv1 (board-view board p1)
-        bv2 (board-view board p2)
-        ]
-    (println "players : " (:players game))
-    (println "turn    : " (:turn game))
-    (println "next player : " (next-player game))
-    (if (or (= 'admin player) (= p1 player))
-      (do
-        (println "board as seen by " p1)
-        (println "**************************************" )
-        (dorun  (map #(println "     " %) bv1))))
-    (if (or (= 'admin player) (= p2 player))
-      (do
-        (println "**************************************" )
-        (println "board as seen by " p2)
-        (dorun  (map #(println "     " %) bv2))))
-    (println "END" )
-)
+  (html
+   (let [
+         game (get-game game-id)
+         p1 (get  (vec  (:players game)) 0)
+         p2 (get  (vec  (:players game)) 1)
+         board (:board game)
+         bv1 (board-view board p1)
+         bv2 (board-view board p2)
+         ]
+     (html
+      [:ul "players : " (:players game)]
+      [:ul "turn    : " (:turn game)]
+      [:ul "next player : " (next-player game)]
+
+      (if (or (= 'admin player) (= p1 player))
+        (board-view-table p1 bv1)
+        )
+      
+      (if (or (= 'admin player) (= p2 player))
+        (board-view-table p2 bv2)
+        )
+      (:ul "END" ))
+     ))
+  )
+
+
+
+
+(defn hello [x]
+  (str  "Hello, Battleships! " x)
+  )
+
+(defroutes app-routes
+     
+  (GET "/hello/:x" [x] (hello x))
+  (GET "/helloes" [] ["H" "H" "H"])
+  
+  (context "/bs/user/:userid/game/:gameid" [userid gameid]
+           (GET "/game-view" [] (game-view (read-string  gameid) (symbol  userid))))
+  
+  (files "" {:root "static"})
+  (compojure.route/not-found "No Battleships found. Its a trap!")
+  )
+
+
+
+(defn -main
+  "main."
+  [& args]
+  (let [handler (if true ;(in-dev? args)
+                  (reload/wrap-reload (site #'app-routes)) ;; only reload when dev
+                  (site app-routes))]
+    (run-server handler {:port 7890}))
+
   )
