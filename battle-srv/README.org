@@ -98,3 +98,23 @@ http://www.gnu.org/licenses/agpl-3.0.html
 
 
  }
+
+currently the structure looks like this:
+
+#+BEGIN_SRC clojure
+  {:board [[{:view #{mv}} {:view #{mv}} {:entities ({:type ship, :owner mv}), :view #{mv}} {:view #{mv}}]
+           [{:view #{mv}} {:view #{mv}} {:view #{mv}} {:view #{mv}}]
+           [{:view #{mv}} {:entities ({:type ship, :owner mv}), :view #{mv}} {:view #{mv}} {:view #{mv}}]
+           [{:entities ({:type ship, :owner mv}), :view #{mv}} {:view #{mv}} {:view #{mv}} {:entities ({:type ship, :owner mv}), :view #{mv}}]
+           [{:view #{jv}} {:view #{jv}} {:entities ({:type ship, :owner jv}), :view #{jv}} {:view #{jv}}]
+           [{:view #{jv}} {:view #{jv}} {:view #{jv}} {:entities ({:type ship, :owner jv}), :view #{jv}}]
+           [{:view #{jv}} {:entities ({:type ship, :owner jv}), :view #{jv}} {:view #{jv}} {:view #{jv}}]
+           [{:entities ({:type ship, :owner jv}), :view #{jv}} {:view #{jv}} {:view #{jv}} {:view #{jv}}]],
+   :players #{jv mv},
+   :turn 0,
+   :last-player nil}
+#+END_SRC clojure
+
+:view determines if a player can see the cell or not.
+:entities is a list of things in a cell.
+
