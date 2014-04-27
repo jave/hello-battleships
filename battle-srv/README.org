@@ -118,3 +118,8 @@ currently the structure looks like this:
 :view determines if a player can see the cell or not.
 :entities is a list of things in a cell.
 
+
+* running the server
+lein run
+
+the web port is atm 7890.

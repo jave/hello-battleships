@@ -112,7 +112,7 @@
   )
 
 (defn update-game [game-id new-game]
-  (send (get all-games game-id) (fn [x] new-game))
+  (send (get @all-games game-id) (fn [x] new-game))
   )
 
 (defn next-player [game]
@@ -168,17 +168,19 @@
 
 
 (defn make-move [game-id move-fn player x y]
-  (let [
-        game (get-game game-id)
 
+  (let [game (get-game game-id)
+        dummy (println (resolve move-fn))
         {:keys [result new-board]} (apply (resolve move-fn) [game player x y ])
 
+        
         game-after-move
-        (-> game
-            (update-in  [:turn] inc)
-            (assoc-in  [:board] new-board)
-            (assoc-in  [:last-player] player)
-            )
+        (if (first result)
+          (-> game
+              (update-in  [:turn] inc)
+              (assoc-in  [:board] new-board)
+              (assoc-in  [:last-player] player)
+              ))
         ]
 
     (if (first result) ;;only update the board if the move was legal
@@ -224,12 +226,18 @@
   ) 
 
 
-(defn board-view-table [player boardview]
+(defn board-view-table [gameid player boardview]
   [:div
    [:ul "board as seen by " player]
    [:ul "**************************************" ]
    [:table 
-    (map (fn [x] [:tr  (map (fn [y] [:td y]) x) ]) boardview)]])
+    (map (fn [x cx] [:tr  (map (fn [y cy] [:td
+                                     
+                                     (if ( = '? y )
+                                       [:a {:href (str "/bs" "/user/" player "/game/" gameid   "/shoot/" cx "/" cy) } y ]
+                                       y )
+                                     
+                                        ]) x (range 0 (count x))) ]) boardview (range 0 (count boardview)))]])
    
 
 (defn game-view [game-id player]
@@ -248,11 +256,11 @@
       [:ul "next player : " (next-player game)]
 
       (if (or (= 'admin player) (= p1 player))
-        (board-view-table p1 bv1)
+        (board-view-table game-id p1 bv1)
         )
       
       (if (or (= 'admin player) (= p2 player))
-        (board-view-table p2 bv2)
+        (board-view-table game-id p2 bv2)
         )
       (:ul "END" ))
      ))
@@ -271,7 +279,16 @@
   (GET "/helloes" [] ["H" "H" "H"])
   
   (context "/bs/user/:userid/game/:gameid" [userid gameid]
-           (GET "/game-view" [] (game-view (read-string  gameid) (symbol  userid))))
+           (GET "/game-view" [] (game-view (read-string  gameid) (symbol  userid)))
+           (GET "/shoot/:x/:y" [x y]
+                (str  (make-move (read-string  gameid)
+                                 'battle-srv.core/move-shoot-at
+                                 (symbol  userid)
+                                 (read-string  x)
+                                 (read-string  y)
+                                 )
+                      (html [:a {:href (str "/bs" "/user/" userid "/game/" gameid   "/game-view") } "return to game view"  ]))
+                ))
   
   (files "" {:root "static"})
   (compojure.route/not-found "No Battleships found. Its a trap!")
