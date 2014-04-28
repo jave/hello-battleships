@@ -21,11 +21,6 @@
   )
 
 
-(defn hello
-  "hello battleships."
-  [x]
-  (println x "Hello, Battleships!"))
-
 (def demo-board
   '[
     [{:view #{p1} :entities ({:type ship :owner p1} )} {:view #{p1}} nil nil]  
@@ -114,6 +109,18 @@
 (defn update-game [game-id new-game]
   (send (get @all-games game-id) (fn [x] new-game))
   )
+
+;;we need a lobby as well
+(defn list-games [])
+
+(defn list-game-types [])
+
+(defn create-game [])
+
+(defn add-player-to-game [])
+
+(defn start-game [])
+
 
 (defn next-player [game]
   (let [players (vec (:players game))
