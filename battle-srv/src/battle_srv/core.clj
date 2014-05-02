@@ -35,14 +35,14 @@
     ])
 
 
-
+(declare add-entity-at)
 ;;(vec (repeat 8 (vec(repeat  4 nil))))
 
 (defn empty-board [x]
   (into [] (doall (repeat x (into [] (doall (repeat x  nil))))))
   )
 
-(defn empty-player-board [size p1-sym p2-sym]
+(defn empty-battleships-board [size p1-sym p2-sym]
   (let [startboard
         (into [] (concat (board-map  (empty-board size) (fn [cell]   (update-in cell [:view] (fn [x] (into #{} (conj x p1-sym)))) ) )
                          (board-map  (empty-board size) (fn [cell]   (update-in cell [:view] (fn [x] (into #{} (conj x p2-sym)))) ) )))
@@ -57,6 +57,9 @@
     p2board
 
     ))
+
+(defn empty-memory-board [width p1 p2]
+  (list2grid width (map  (fn [x] {:view #{} :entities `({:type piece :value ~x})}) (shuffle (mapcat #(repeat 2 %) (range 0 (* width width)))))))
 
 (defn randomize-entities [startboard xrand yrand owner type startcount]
   (loop [board  startboard
@@ -78,13 +81,35 @@
                (:entities cell))
           ))
 
+(defmulti new-game (fn [type players size] type  ))
 
-(defn new-game [p1 p2 size]
-  {:board (empty-player-board size p1 p2)
-   :players #{p1 p2}
+(defmethod new-game :Battleships [type players size]
+  {:Game :Battleships
+   :board (empty-battleships-board (first size) (first players) (second players))
+   :players #{(first players) (second players)}
    :turn 0
    :last-player nil}
   )
+
+(defmethod new-game :Memory [type players size]
+  {:Game :Memory
+   :board (empty-memory-board (first size) (first players) (second players))
+   :players #{(first players) (second players)}
+   :turn 0
+   :last-player nil}
+  )
+
+;;for empty memory board
+
+
+(defn list2grid [w coll]
+  (into [] (reverse (loop [acc [] rest coll]
+                      (if (>= w (count rest))
+                        acc
+                        (recur (conj acc (into [] (take w rest))) (nthnext  rest w))))                   )))
+;;(list2grid 4 (shuffle (mapcat #(repeat 2 %) (range 0 9))))
+
+
 
 (def all-players
   {'mv {:name "mattias"}
@@ -96,7 +121,9 @@
 
 (def all-games
   (agent 
-   [(agent  (new-game 'mv 'jv 10)
+   [(agent  (new-game :Battleships '(mv jv) '(10))
+            )
+    (agent  (new-game :Memory '(mv jv) '(4))
             )]))
 
 ;;using a vector index to identify games is pretty dumb, so maybe use uuids
@@ -122,7 +149,16 @@
 (defn start-game [])
 
 
-(defn next-player [game]
+(defmulti next-player :Game)
+
+(defmethod next-player :Battleships [game]
+  (let [players (vec (:players game))
+        num-players (count players)]
+    (get players (mod (inc (:turn game)) num-players)))
+  )
+
+;;TODO just cloned the bs version
+(defmethod next-player :Memory [game]
   (let [players (vec (:players game))
         num-players (count players)]
     (get players (mod (inc (:turn game)) num-players)))
@@ -141,8 +177,9 @@
   )
 
 ;;(:type (first (board-at demo-board 0 0)))
+(defmulti move-shoot-at (fn [game player x y] (:Game game)))
 
-(defn move-shoot-at [game player x y]
+(defmethod  move-shoot-at :Battleships [game player x y]
   (let [board (:board game)]
     (cond
      (or (> x (count board)) (> y (count (first  board))) )
@@ -173,6 +210,34 @@
         true
         {:result '(true "Missed!") :new-board new-board})))))
 
+(defmethod  move-shoot-at :Memory [game player x y]
+  (let [board (:board game)]
+    (cond
+     (or (> x (count board)) (> y (count (first  board))) )
+     {:result '(false "dont shoot outside the board") :new-board board}
+
+     (= player (next-player game))
+     {:result '(false "its not your turn") :new-board board}
+
+     
+     true
+     (let [board (:board game)
+           cell  (board-at board x y)
+           new-board (-> board
+                         (set-viewers-at (:players game) x y)
+                         (add-entity-at  {:type 'shot :owner player} x y))]
+       
+       (cond
+        (cell-contains-any cell 'shot)
+        {:result '(false "You already turned over that card") :new-board board}
+
+        (contains? (:view cell) player)
+        {:result '(false "Theres no point turning over a card alredy turned") :new-board board}
+
+        
+        true
+        {:result '(true "turned a card over") :new-board new-board})))))
+
 
 (defn make-move [game-id move-fn player x y]
 
@@ -182,7 +247,7 @@
 
         
         game-after-move
-        (if (first result)
+        (if (first result);;only update board if legal move
           (-> game
               (update-in  [:turn] inc)
               (assoc-in  [:board] new-board)
@@ -201,6 +266,9 @@
 (defn add-viewer-at [board player x y]
   (update-in board [x y :view] (fn [x] (into #{} (conj x player)))))
 
+(defn set-viewers-at [board players x y]
+  (update-in board [x y :view] (fn [x] players)))
+
 (defn add-entity-at [board entity x y]
   (update-in board [x y :entities] (fn [x] (conj x entity))))
 
@@ -214,6 +282,7 @@
           ['shot] '* ;;shot missed!
           ['ship] '= ;;ship
           [] 'w ;;empty water
+          ['shot 'battle-srv.core/piece ] (str "V"  (:value (nth  (:entities cell) 1))) ;;this is for memory, the others are for battleships, so this needs some thinks
           :else cell) ;; something else, debug
    :else '? ;;you cant see here
    ))
