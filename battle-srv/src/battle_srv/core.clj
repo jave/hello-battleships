@@ -126,15 +126,29 @@
     (agent  (new-game :Memory '(mv jv) '(4))
             )]))
 
+(def all-games-log
+  ;;push game state log here
+  (agent
+   [(agent [])
+    (agent [])])
+  )
+
 ;;using a vector index to identify games is pretty dumb, so maybe use uuids
 (defn uuid [] (str (java.util.UUID/randomUUID)))
 
 (defn get-game [game-id]
   (deref (get  @all-games game-id))
   )
+(defn get-game-log [game-id num]
+  (nth  (deref (get  @all-games-log game-id)) num)
+  )
 
 (defn update-game [game-id new-game]
   (send (get @all-games game-id) (fn [x] new-game))
+  )
+
+(defn update-game-log [game-id game]
+  (send (get @all-games-log game-id) (fn [x] (conj x game)))
   )
 
 ;;we need a lobby as well
@@ -180,86 +194,77 @@
 (defmulti move-shoot-at (fn [game player x y] (:Game game)))
 
 (defmethod  move-shoot-at :Battleships [game player x y]
-  (let [board (:board game)]
+  (let [board (:board game)
+        cell  (board-at board x y)
+        new-board (-> board
+                      (add-viewer-at player x y)
+                      (add-entity-at  {:type 'shot :owner player} x y))]
+    
     (cond
-     (or (> x (count board)) (> y (count (first  board))) )
-     {:result '(false "dont shoot outside the board") :new-board board}
+     (cell-contains-any cell 'shot)
+     {:result '(false "You already made a shot there") }
 
-     (= player (next-player game))
-     {:result '(false "its not your turn") :new-board board}
+     (contains? (:view cell) player)
+     {:result '(false "Theres no point shooting where you can see already") }
 
      
+     (cell-contains-any cell 'ship)
+     {:result '(true "Hit an enemy ship!") :new-game (assoc-in game [:board] new-board)}
+
      true
-     (let [board (:board game)
-           cell  (board-at board x y)
-           new-board (-> board
-                         (add-viewer-at player x y)
-                         (add-entity-at  {:type 'shot :owner player} x y))]
-       
-       (cond
-        (cell-contains-any cell 'shot)
-        {:result '(false "You already made a shot there") :new-board board}
-
-        (contains? (:view cell) player)
-        {:result '(false "Theres no point shooting where you can see already") :new-board board}
-
-        
-        (cell-contains-any cell 'ship)
-        {:result '(true "Hit an enemy ship!") :new-board new-board}
-
-        true
-        {:result '(true "Missed!") :new-board new-board})))))
+     {:result '(true "Missed!")  :new-game (assoc-in game [:board] new-board) })))
 
 (defmethod  move-shoot-at :Memory [game player x y]
-  (let [board (:board game)]
+  (let [board (:board game)
+        cell  (board-at board x y)
+        new-board (-> board
+                      (set-viewers-at (:players game) x y)
+                      (add-entity-at  {:type 'shot :owner player} x y))]
+    
     (cond
-     (or (> x (count board)) (> y (count (first  board))) )
-     {:result '(false "dont shoot outside the board") :new-board board}
+     (cell-contains-any cell 'shot)
+     {:result '(false "You already turned over that card")}
 
-     (= player (next-player game))
-     {:result '(false "its not your turn") :new-board board}
+     (contains? (:view cell) player)
+     {:result '(false "Theres no point turning over a card alredy turned")}
 
      
      true
-     (let [board (:board game)
-           cell  (board-at board x y)
-           new-board (-> board
-                         (set-viewers-at (:players game) x y)
-                         (add-entity-at  {:type 'shot :owner player} x y))]
-       
-       (cond
-        (cell-contains-any cell 'shot)
-        {:result '(false "You already turned over that card") :new-board board}
+     {:result '(true "turned a card over")  :new-game (assoc-in game [:board] new-board)})))
 
-        (contains? (:view cell) player)
-        {:result '(false "Theres no point turning over a card alredy turned") :new-board board}
-
-        
-        true
-        {:result '(true "turned a card over") :new-board new-board})))))
-
+;;(move-shoot-at (get-game 0)  'jv 3 7)
 
 (defn make-move [game-id move-fn player x y]
-
   (let [game (get-game game-id)
-        dummy (println (resolve move-fn))
-        {:keys [result new-board]} (apply (resolve move-fn) [game player x y ])
+        board (:board game)]
+    (cond
+     (or (> x (count board)) (> y (count (first  board))) )
+     '(false "dont make moves outside the board")
 
-        
-        game-after-move
-        (if (first result);;only update board if legal move
-          (-> game
-              (update-in  [:turn] inc)
-              (assoc-in  [:board] new-board)
-              (assoc-in  [:last-player] player)
-              ))
-        ]
+     (= player (next-player game))
+     '(false "its not your turn")
 
-    (if (first result) ;;only update the board if the move was legal
-      (update-game game-id game-after-move))
-    result))
+     true
+     (let [
+           {:keys [result new-game] :or {new-game nil}}   (apply (resolve move-fn) [game player x y ])
+           
+           game-after-move
+           (if (first result);;only update board if legal move
+             (do (-> new-game
+                     (update-in  [:turn] inc)
+                     ;;              (assoc-in  [:board] new-board)
+                     (assoc-in  [:last-player] player)
+                     )))
+           ]
+
+       (if (first result) ;;only update the board if the move was legal
+         (do (update-game game-id game-after-move)
+             (update-game-log game-id game-after-move)
+             ))
+       result))))
 
 ;;(make-move 0 'move-shoot-at 'jv 0 7)
+
 
 ;;(update-in demo-board [0 0 :view] (fn [x] (conj x 'p2)))
 
@@ -316,10 +321,11 @@
                                         ]) x (range 0 (count x))) ]) boardview (range 0 (count boardview)))]])
    
 
-(defn game-view [game-id player]
+(defn game-view [game-id player
+                 & {:keys [log] :or {log nil}}]
   (html
    (let [
-         game (get-game game-id)
+         game (if log (get-game-log game-id log) (get-game game-id))
          p1 (get  (vec  (:players game)) 0)
          p2 (get  (vec  (:players game)) 1)
          board (:board game)
@@ -356,6 +362,7 @@
   
   (context "/bs/user/:userid/game/:gameid" [userid gameid]
            (GET "/game-view" [] (game-view (read-string  gameid) (symbol  userid)))
+           (GET "/game-log/:log-item" [log-item] (game-view (read-string  gameid) (symbol  userid) :log (read-string log-item)))
            (GET "/shoot/:x/:y" [x y]
                 (str  (make-move (read-string  gameid)
                                  'battle-srv.core/move-shoot-at
