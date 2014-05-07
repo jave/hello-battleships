@@ -107,7 +107,8 @@
    :players #{(first players) (second players)}
    :turn 0
    :turn-phase 'pick-first
-   :player nil})
+   :player (first players) 
+   :next-player  (second players)})
 
 ;;for empty memory board
 
@@ -152,14 +153,20 @@
 
 (defmulti next-player :Game)
 
+(defn next-player-in-set  [game]
+  (let [players (vec (:players game))
+        player-idx (.indexOf   players (:player game))
+        num-players (count players)]
+    (get players (mod (inc player-idx) num-players))))
+
 (defmethod next-player :Battleships [game]
   (let [players (vec (:players game))
         num-players (count players)]
     (get players (mod (inc (:turn game)) num-players))))
 
-;;TODO just cloned the bs version
+
 (defmethod next-player :Memory [game]
-'jv)
+  (:next-player game))
 
 
 ;;(next-player (deref(all-games 0)) )
@@ -215,6 +222,7 @@
       :new-game (-> game
                     (assoc-in [:first-pick] (list x y)) ;;there are any number of ways to do this more generally, but start out like this
                     (assoc-in [:turn-phase] 'pick-second)
+                    (assoc-in [:next-player] player)
                     (assoc-in [:card1] (:value (nth  (:entities cell) 0)))
                     (assoc-in [:board]      (set-viewers-at board (:players game) x y)))}
 
@@ -223,6 +231,7 @@
      {:result '(true "turned second card over, fail")
       :new-game (-> game
                     (assoc-in [:second-pick] (list x y)) ;;there are any number of ways to do this more generally, but start out like this
+                    (assoc-in [:next-player] player)
                     (assoc-in [:turn-phase] 'show-second)
                     (assoc-in [:board]      (set-viewers-at board (:players game) x y)))}
 
@@ -237,12 +246,14 @@
         :new-game (-> game
                       ;;first  capture the pair, dont hide now
                       (assoc-in [:turn-phase] 'pick-first)
+                      (assoc-in [:next-player] player)
                       (assoc-in [:board]  new-board2))})
      (and  (= 'show-second (:turn-phase game)))
-     {:result '(true "hide cards, try again!")
+     {:result '(true "hide cards, next player!")
       :new-game (-> game
                     ;;first  capture the pair, then hide them
                     (assoc-in [:turn-phase] 'pick-first)
+                    (assoc-in [:next-player] (next-player-in-set game))
                     (assoc-in [:board]
                               (->      board
                                   (set-viewers-at  #{} (first (:first-pick game )) (second (:first-pick game )) )
@@ -284,8 +295,8 @@
      (or (> x (count board)) (> y (count (first  board))) )
      '(false "dont make moves outside the board")
 
-     (= player (next-player game))
-     '(false "its not your turn")
+     (not= player (next-player game))
+     (list false (str "its not your turn " player " " (next-player game)))
 
      true
      (let [
@@ -383,7 +394,7 @@
        [:tr [:td "next player : "] [:td (next-player game)]]
        [:tr [:td "turn phase : "] [:td (:turn-phase game)]]      
        [:tr [:td "turn    : "] [:td (:turn game)]]
-       [:tr [:td "next player : "] [:td (next-player game)]]]
+       ]
 
 
       (if (or (= 'admin player) (= p1 player))
@@ -403,6 +414,7 @@
   {'mv {:name "mattias"}
    'jv  {:name "joakim"}
    'th {:name "tomas"}
+   'hz (:name "henrik")
    'admin {:name "administrator"}
    }
   )
