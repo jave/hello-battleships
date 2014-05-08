@@ -13,7 +13,8 @@
    [clojure.tools.cli :only [cli]]
    ring.util.response
    hiccup.core
-   hiccup.page)
+   hiccup.page
+   hiccup.element)
   (:require 
    [ring.middleware.reload :as reload]
    [clojure.data.json :as json]
@@ -378,36 +379,66 @@
 (defn game-view [game-id player
                  & {:keys [log] :or {log nil}}]
   (html
-   (let [
-         game (if log (get-game-log game-id log) (get-game game-id))
-         p1 (get  (vec  (:players game)) 0)
-         p2 (get  (vec  (:players game)) 1)
-         board (:board game)
-         bv1 (board-view board p1)
-         bv2 (board-view board p2)
-         bv3 (board-view board 'admin)
-         ]
-     (html
-      [:table 
-       [:tr [:td "players : "] [:td  (:players game)]]
-       [:tr [:td "player : "] [:td (:player game)]]
-       [:tr [:td "next player : "] [:td (next-player game)]]
-       [:tr [:td "turn phase : "] [:td (:turn-phase game)]]      
-       [:tr [:td "turn    : "] [:td (:turn game)]]
-       ]
+   (html5
+    [:head
+     (javascript-tag
+      (str
+       ;;       "alert(document.getElementById('message'));"
+;;       "alert(window.location.href.replace('http://', 'ws://').replace('/bs/', '/ws/'));"
+        "window.socket = new WebSocket(window.location.href.replace('http://', 'ws://').replace('/bs/', '/ws/'));"
+        "socket.onopen = function() {"
+       "  return console.log('socket opened')"
+       "};"
 
-
-      (if (or (= 'admin player) (= p1 player))
-        (board-view-table game-id p1 bv1)
-        )
+       "socket.onmessage = function(msg) {"
+       ;;"alert(document.getElementById('message'));"
+       ;;"alert(msg.data);"
+       ;;       " document.getElementById('message').replaceWith('mupp');"
+       ;; i dont want jquery atm
+       ;;"    return document.getElementById('message').replaceWith('<p >' + msg.data + '</p>');"
+       "var message=document.getElementById('message'),"
+       "messageparent = message.parentNode,"
+       "tempDiv = document.createElement('div');"
+       "tempDiv.innerHTML = \"<p>\"+msg.data+\"</p/>\";"
+       "messageparent.replaceChild(tempDiv, message);"
+        "};"
+       )
       
-      (if (or (= 'admin player) (= p2 player))
-        (board-view-table game-id p2 bv2)
-        )
-      (if (or (= 'admin player) )
-        (board-view-table game-id 'admin bv3)
-        )
-      (:ul "END" )))))
+      )]
+    
+    [:body
+     (let [
+           game (if log (get-game-log game-id log) (get-game game-id))
+           p1 (get  (vec  (:players game)) 0)
+           p2 (get  (vec  (:players game)) 1)
+           board (:board game)
+           bv1 (board-view board p1)
+           bv2 (board-view board p2)
+           bv3 (board-view board 'admin)
+           ]
+       (html
+        [:table 
+         [:tr [:td "players : "] [:td  (:players game)]]
+         [:tr [:td "player : "] [:td (:player game)]]
+         [:tr [:td "next player : "] [:td (next-player game)]]
+         [:tr [:td "turn phase : "] [:td (:turn-phase game)]]      
+         [:tr [:td "turn    : "] [:td (:turn game)]]
+         [:tr [:td "msg    : "] [:td        [:p#message "websocket message" ]]]
+
+         ]
+
+
+        (if (or (= 'admin player) (= p1 player))
+          (board-view-table game-id p1 bv1)
+          )
+        
+        (if (or (= 'admin player) (= p2 player))
+          (board-view-table game-id p2 bv2)
+          )
+        (if (or (= 'admin player) )
+          (board-view-table game-id 'admin bv3)
+          )
+        (:ul "END" )))])))
 
 
 (def all-players
@@ -438,11 +469,30 @@
 (defn hello [x]
   (str  "Hello, Battleships! " x))
 
+(def clients (atom {}))
+
+(defn send-message [message]
+    (doseq [client (keys @clients)]
+      (send! client
+             message
+             false )
+    ))
+
+(defn msg-handler [req]
+  (with-channel req channel
+    (println channel "websocket connected") ;;needs logging api
+    (swap! clients assoc channel true)
+    (on-close channel (fn [status]
+                        (swap! clients dissoc channel)
+                        (println channel "websocket closed, status" status)
+                        ))))
+
 (defroutes app-routes
      
   (GET "/hello/:x" [x] (hello x))
   (GET "/helloes" [] ["H" "H" "H"])
-
+  (GET "/ws/*" []  msg-handler)
+  
   ;;this context is for the debug html ui
   (context "/bs/user/:userid/game/:gameid" [userid gameid]
            (GET "/game-view" [] (game-view (read-string  gameid) (symbol  userid)))
