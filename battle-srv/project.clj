@@ -13,4 +13,5 @@
                  [ring/ring-json "0.3.1"]
                  [javax.servlet/servlet-api "2.5"]
                  [org.clojure/data.json "0.2.4"]
-                 ])
+                 ]
+  :main battle-srv.core)
