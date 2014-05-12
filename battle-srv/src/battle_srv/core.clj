@@ -312,6 +312,9 @@
        (if (first result) ;;only update the board if the move was legal
          (do (update-game game-id game-after-move)
              (update-game-log game-id game-after-move)
+             (println (second result))
+             (println clients)
+             (send-message (second result))
              ))
        result))))
 
