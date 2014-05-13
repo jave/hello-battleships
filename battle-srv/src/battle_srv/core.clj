@@ -47,6 +47,7 @@
          add-viewer-at
          set-entities-at)
 (declare all-players all-games all-games-log)
+(declare clients send-message)
 ;;(vec (repeat 8 (vec(repeat  4 nil))))
 
 (defn empty-board [x]
