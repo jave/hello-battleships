@@ -1,6 +1,26 @@
+* Hello Battleships!
+
+Hello Battleships is a collaborative educational experience making
+networked multiplayer turn based games.
+
+Battleships was the first implemented game, Memory the second.
+
+Since it is primaryly an educational experience we focus on doing
+interesting things, like coding the server in Clojure, and writing
+clients in also interesting ways. 
+
+If you want to join in, we would be extatic.
+
 * license
 http://www.gnu.org/licenses/agpl-3.0.html
-* discussion about game structures
+
+So, basically it would be nice if you would contribute back code to
+the project if you feel like using it.
+
+* Discussion about game structures
+What should the game structure look like?
+We would like to be able to support several different game types.
+
 ;; game example
 ;; in this case eacsh player has separate boards for  different aspects, ships, shots, etc
 {
@@ -118,8 +138,23 @@ currently the structure looks like this:
 :view determines if a player can see the cell or not.
 :entities is a list of things in a cell.
 
+* General technology discussion
+The server uses http-kit, because its lightweight, simple to work
+with, and supports websockets nicely.
 
-* running the server
+As of now theres no security implemented, but the friend library seems nice.
+
+There are some beginnings of a json interface, and it just uses plain Clojure and json lib.
+If we want to do anything more advanced, we are eyeing fnhouse.
+
+* Buildinng and running the server
 lein run
 
 the web port is atm 7890.
+
+making a self contained jar:
+lein uberjar
+* Clients
+The idea is to write fat clients using a json rest interface.
+
+There is also a primitive inbuilt html client to test game logic.
