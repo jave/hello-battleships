@@ -374,7 +374,7 @@
     (map (fn [x cx] [:tr  (map (fn [y cy] [:td
                                      
                                      (if ( = '? y )
-                                       [:a {:href (str "/bs" "/user/" player "/game/" gameid   "/shoot/" cx "/" cy) } y ]
+                                       [:a {:id (str cx "_" cy) :href (str "/bs" "/user/" player "/game/" gameid   "/shoot/" cx "/" cy) } y ]
                                        y )
                                      
                                         ]) x (range 0 (count x))) ]) boardview (range 0 (count boardview)))]])
@@ -385,6 +385,7 @@
   (html
    (html5
     [:head
+     (include-js "/main.js")
      (javascript-tag
       (str
        ;;       "alert(document.getElementById('message'));"
@@ -496,7 +497,7 @@
   (GET "/hello/:x" [x] (hello x))
   (GET "/helloes" [] ["H" "H" "H"])
   (GET "/ws/*" []  msg-handler)
-  
+  (files "" {:root "static"})
   ;;this context is for the debug html ui
   (context "/bs/user/:userid/game/:gameid" [userid gameid]
            (GET "/game-view" [] (game-view (read-string  gameid) (symbol  userid)))
