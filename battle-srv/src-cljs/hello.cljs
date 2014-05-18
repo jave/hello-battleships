@@ -9,3 +9,11 @@
 (defn ^:export connect []
   (js/alert "connect")
   (repl/connect "http://localhost:9001/repl"))
+
+(defn hello
+  []
+  (js/alert "hello"))
+
+(defn whoami
+  []
+  (.-userAgent js/navigator))

@@ -13,10 +13,14 @@
                  [ring/ring-json "0.3.1"]
                  [javax.servlet/servlet-api "2.5"]
                  [org.clojure/data.json "0.2.4"]
-                 [org.clojure/clojurescript "0.0-2197"
-                  :exclusions [org.apache.ant/ant]]
+                 ;;[org.clojure/clojurescript "0.0-2197"
+                 ;; :exclusions [org.apache.ant/ant]]
+                 [org.clojure/clojurescript "0.0-2138"] ;;the austin web repl wants this particular version
+                 
                  ]
-  :plugins [[lein-cljsbuild "1.0.3"]]
+  :plugins [[com.cemerick/austin "0.1.3"]
+            [lein-cljsbuild "1.0.1"];;this version wanted by austin
+            ]
   :cljsbuild {
               :builds [{
                         ;; The path to the top-level ClojureScript source directory:

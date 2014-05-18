@@ -15,7 +15,8 @@
    hiccup.core
    hiccup.page
    hiccup.element)
-  (:require 
+  (:require
+   [cemerick.austin.repls :refer (browser-connected-repl-js)]
    [ring.middleware.reload :as reload]
    [clojure.data.json :as json]
                                         ;[clj-http.client :as client]
@@ -417,7 +418,8 @@
       )]
     
     [:body
-     (javascript-tag "hello.connect()")
+     ;;(javascript-tag "hello.connect()") ;;this is for the cljsbuild variant of web repl
+     [:script (browser-connected-repl-js)]
      
      (let [
            game (if log (get-game-log game-id log) (get-game game-id))
