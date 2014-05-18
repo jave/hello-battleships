@@ -380,6 +380,11 @@
                                         ]) x (range 0 (count x))) ]) boardview (range 0 (count boardview)))]])
    
 
+(defn- run-clojurescript [path init]
+  (list
+    (include-js path)
+    (javascript-tag init)))
+
 (defn game-view [game-id player
                  & {:keys [log] :or {log nil}}]
   (html
@@ -412,6 +417,8 @@
       )]
     
     [:body
+     (javascript-tag "hello.connect()")
+     
      (let [
            game (if log (get-game-log game-id log) (get-game game-id))
            p1 (get  (vec  (:players game)) 0)

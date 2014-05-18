@@ -154,11 +154,19 @@ the web port is atm 7890.
 
 making a self contained jar:
 lein uberjar
+
 * Clients
 The idea is to write fat clients using a json rest interface.
 
 There is also a primitive inbuilt html client to test game logic.
 
+
+
 * working with clojurescript
-lein autocljs
+Do this in a separate shell, and the cljs files will be compiled to js files automatically.
+then they will be served from the static dir by httpkit.
+
+lein cljsbuild auto
+
+
 
