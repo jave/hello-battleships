@@ -524,12 +524,17 @@
   ;;this context is for the rest api
   (context "/bsapi/user/:userid/game/:gameid" [userid gameid]
            (GET "/game-view" [] (json/write-str  (get-game (read-string  gameid))))
-                     (GET "/shoot/:x/:y" [x y]
+           (GET "/board-view" [] 
+                (json/write-str  (board-view
+                                  (:board (get-game (read-string  gameid)))
+                                  (symbol userid))))
+           
+           (GET "/shoot/:x/:y" [x y]
                 (json/write-str    (make-move (read-string  gameid)
-                                           'battle-srv.core/move-pick-cell
-                                           (symbol  userid)
-                                           (read-string  x)
-                                           (read-string  y)))))
+                                              'battle-srv.core/move-pick-cell
+                                              (symbol  userid)
+                                              (read-string  x)
+                                              (read-string  y)))))
   
   (files "" {:root "static"})
   (compojure.route/not-found "No Battleships found. Its a trap!"))
