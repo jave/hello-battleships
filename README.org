@@ -21,8 +21,11 @@ the project if you feel like using it.
 What should the game structure look like?
 We would like to be able to support several different game types.
 
-;; game example
-;; in this case eacsh player has separate boards for  different aspects, ships, shots, etc
+
+game example
+in this case eacsh player has separate boards for  different aspects, ships, shots, etc
+
+#+BEGIN_SRC clojure
 {
  :p1 {:name "joakim"
       :board [[0 0 0 (:ship 2 d)]
@@ -35,10 +38,12 @@ We would like to be able to support several different game types.
               [0 0 0 0]
               [0 0 0 0]]}
  }
+#+END_SRC clojure
 
-;; another game example
-;; in this case the grid is shared for both(or more) players
-'
+ another game example
+ in this case the grid is shared for both(or more) players
+
+#+BEGIN_SRC clojure
 {
   {:name "joakim" :id :p1}
   {:name "mattias" :id :p2}
@@ -51,10 +56,12 @@ We would like to be able to support several different game types.
 
  }
 
+#+END_SRC clojure
 
 
+a layer approach
 
-;; a layer approach
+#+BEGIN_SRC clojure
 {
   {:name "joakim" :id :p1}
   {:name "mattias" :id :p2}
@@ -83,11 +90,15 @@ We would like to be able to support several different game types.
 
 
  }
+#+END_SRC clojure
+
+again a shared grid example
+here im thinking that it feels like its nicer with a shared world
+ and views of the world, that might have fog of war and stuff
 
 
-;;again a shared grid example
-;;here im thinking that it feels like its nicer with a shared world
-;; and views of the world, that might have fog of war and stuff
+
+#+BEGIN_SRC clojure
 {
  :players {{:name "joakim" :id :p1}
            {:name "mattias" :id :p2}}
@@ -102,9 +113,12 @@ We would like to be able to support several different game types.
 
 
  }
+#+END_SRC clojure
 
-;;so, is this useful for other games? heres Go
-;, seems ok. :type and :owner are generic enough to be usable across games
+so, is this useful for other games? heres Go
+, seems ok. :type and :owner are generic enough to be usable across games
+
+#+BEGIN_SRC clojure
 {
  :players {{:name "joakim" :id :p1}
            {:name "mattias" :id :p2}}
@@ -118,7 +132,7 @@ We would like to be able to support several different game types.
 
 
  }
-
+#+END_SRC clojure
 currently the structure looks like this:
 
 #+BEGIN_SRC clojure
@@ -168,5 +182,15 @@ then they will be served from the static dir by httpkit.
 
 lein cljsbuild auto
 
+we use austin as the brepl backend.
 
+cljx for sharing code between clj and cljs.
 
+* games
+** in progress
+- battleships
+- memory
+** should be pretty easy
+- gomuko
+** other games
+were looking for similar games, with perhaps some simple extra facilities, so we wind up with a toolbox.
