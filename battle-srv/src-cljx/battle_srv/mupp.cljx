@@ -1,4 +1,4 @@
-(ns battle-srv.core)
+(ns battle-srv.mupp)
 
 (defn cljx-hello []
   "hello from cljx")

@@ -54,7 +54,7 @@
               }
   :hooks [cljx.hooks]
   :main battle-srv.core
-  :source-paths ["target/generated/src/clj" "src-clj"]
+  :source-paths [ "src" "target/generated/src/clj"]
 
   )
 
