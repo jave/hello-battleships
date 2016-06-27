@@ -58,7 +58,8 @@
          [nav-link "#/" "Home" :home collapsed?]
          [nav-link "#/grid" "Grid" :grid collapsed?]         
          [nav-link "#/hex" "Hex" :hex collapsed?]         
-         [nav-link "#/tri" "Tri" :tri collapsed?]         
+         [nav-link "#/tri" "Tri" :tri collapsed?]
+         [nav-link "#/anim" "Anim" :anim collapsed?]                  
          [nav-link "#/about" "About" :about collapsed?]]]])))
 
 (defn about-page []
@@ -201,7 +202,7 @@
 
 
 
-
+(def svgicons  #{"heart" "ring" "cross" "goateye" "eye"  "hand" "cockroach" "skull" "space"})
 
 (defn piece [state wh o]
   (let* [;wh 200
@@ -216,18 +217,15 @@
      :width wh :height wh
      :viewBox "0 0 100 100"
       }
-    (conj (if (contains? #{"O" "X"} state)
+    (conj (if (contains? svgicons state)
             [:image
                             {
                              :x 0
                              :y 0
                              :width 100
                              :height 100
-                             :xlinkHref    (cond
-                                             (= state "O") "/img/O.svg" ;;"https://upload.wikimedia.org/wikipedia/commons/7/77/Gear_icon.svg"
-                                             (= state "X") "/img/X.svg" ;;"https://upload.wikimedia.org/wikipedia/commons/7/7d/Tab_plus.svg"
-                                             ;;:else "https://upload.wikimedia.org/wikipedia/commons/7/77/Gear_icon.svg" ;;debug
-                                             )
+                             :xlinkHref
+                             (str "/img/" state ".svg" )
                              ;;:transform-origin "150px,150px"
                              }]
    [:text 
@@ -307,28 +305,12 @@
   )
 
   (defn select-move-form []
+
     [:div.container
-
-     ;(into 
-     [:form 
-      "X" [:input {:type "radio" :name "set" :value 1 :on-change #(reset! setstate "X")}] ;;(-> % .-target .-value)
-      "O" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "O")}]
-      "1" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "1")}]      
-      "2" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "2")}]      
-      "3" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "3")}]      
-      "4" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "4")}]      
-      "5" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "5")}]      
-      "6" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "6")}]      
-      "7" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "7")}]      
-      "8" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "8")}]      
-      "9" [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate "9")}]      
-      ]
-     ;;(map (fn [x] [(str x) [:input {:type "radio" :name "set" :value 2 :on-change #(reset! setstate (str x))}]]) '(0 1 2 3 4 5 6 7 8 9 0))
-     ;)
+     (into [:form]   (map    (fn [x] [:span (str x) [:input {:type "radio" :name "set" :value 1 :on-change #(reset! setstate x)}]] )
+                             (apply sorted-set (into (into svgicons (map  str (range 0 9)))
+                                                     (map char (range 65 91))))))
      ]
-
-
-
     )
 
 (defn clickable [id & body]
@@ -397,6 +379,52 @@
 
    ]
   )
+
+
+
+(defn anim-page []
+  [:div.container
+   [:div.jumbotron
+    [:h1 "Anim"]
+
+    ]
+
+   
+   [:svg 
+    {:width  1000
+     :height  1000
+
+     :style {:border "1px solid black" }}
+     [:defs [:style { :type "text/css"
+                     }
+             "<![CDATA[
+       #layer2 {
+         display:none;
+       }
+    ]]>"
+             ]
+      ]    
+                [:image
+                            {
+                             :x 0
+                             :y 0
+                             :width 1000
+                             :height 1000
+                             :xlinkHref
+                             (str "/img/" "eye" ".svg" )
+                             ;;:transform-origin "150px,150px"
+                             }]
+     ;; id="layer2"
+     ;; inkscape:label="lid1"
+     ;; style="display:inline">
+    ;;display:none
+    ;;#layer2 {display:none}
+    
+    ]
+
+   ]
+  )
+
 
 
 
@@ -478,7 +506,8 @@
    :about #'about-page
    :grid #'grid-page
    :hex #'hex-page
-   :tri #'tri-page})
+   :tri #'tri-page
+   :anim #'anim-page})
 
 (defn page []
   [(pages (session/get :page))])
@@ -501,6 +530,8 @@
 
 (secretary/defroute "/tri" []
   (session/put! :page :tri))
+(secretary/defroute "/anim" []
+  (session/put! :page :anim))
 
 ;; -------------------------
 ;; History
